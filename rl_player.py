@@ -8,6 +8,7 @@ class Player():
         self.model = Model()
         self.buffer = []
         self.TRESH = 100
+        self.EMPTY = 0
 
 
     def make_move(self, observation):

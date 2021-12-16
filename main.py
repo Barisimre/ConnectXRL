@@ -1,13 +1,12 @@
 from kaggle_environments import make
+
 from rl_player import *
+from agents.bruteforce_agent import BruteforceAgent
+from agents.human_agent import HumanAgent
 
-configuration = {
-    "rows": 6,
-    "columns:": 7,
-    "inarow": 4,
-    "actTimeout": 10
-}
+from settings.configuration import Configuration
 
+configuration = Configuration(rows=6, columns=7, inarow=4, actTimeout=10)
 env = make("connectx", configuration=configuration, debug=True)
 
 def train():
@@ -15,9 +14,11 @@ def train():
     trainer = env.train([None, "random"])
     obs = trainer.reset()
 
-    player = Player()
+    # player = Player()
+    # player = BruteforceAgent(configuration, depth=2)
+    player = HumanAgent(configuration)
 
-    for _ in range(1000):
+    for _ in range(100):
         # env.render()
 
         if env.done:
@@ -26,7 +27,9 @@ def train():
         action = player.make_move(obs)
         obs, reward, done, info = trainer.step(action)
         player.save(old_obs, action, reward, obs)
-        print(reward, done)
+        if done:
+            print(reward)
+        #print(reward, done)
 
 train()
     
