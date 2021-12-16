@@ -4,9 +4,11 @@ from rl_model import Model
 
 class Player():
 
-    model = Model()
-    buffer = []
-    TRESH = 100
+
+    def __init__(self) -> None:
+        self.model = Model()
+        self.buffer = []
+        self.TRESH = 100
 
 
     def make_move(self, observation):
