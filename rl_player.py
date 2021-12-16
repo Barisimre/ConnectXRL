@@ -1,4 +1,3 @@
-from traceback import print_tb
 from kaggle_environments import make
 from rl_model import Model
 
