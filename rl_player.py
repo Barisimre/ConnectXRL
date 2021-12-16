@@ -7,6 +7,7 @@ class Player():
     def __init__(self) -> None:
         self.model = Model()
         self.training = True
+        self.EMPTY = 0
 
 
 
