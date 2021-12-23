@@ -1,34 +1,54 @@
 from kaggle_environments import make
 
-from rl_player import *
-from agents.bruteforce_agent import BruteforceAgent
+from agents.rl_agent import *
 from agents.human_agent import HumanAgent
 
 from settings.configuration import Configuration
+from itertools import count
 
-configuration = Configuration(rows=6, columns=7, inarow=4, actTimeout=10)
+# Configs
+ROWS = 6
+COLUMNS = 7
+INAROW = 4
+TIMEOUT = 10
+
+configuration = Configuration(rows=ROWS, columns=COLUMNS, inarow=INAROW, actTimeout=TIMEOUT)
 env = make("connectx", configuration=configuration, debug=True)
 
 def train():
     # Training agent in first position (player 1) against the default random agent.
-    trainer = env.train([None, "random"])
-    obs = trainer.reset()
+
 
     # player = Player()
     # player = BruteforceAgent(configuration, depth=2)
-    player = HumanAgent(configuration)
+    agent = HumanAgent(configuration)
+    # agent = RLAgent(COLUMNS, ROWS)
 
-    for _ in range(100):
-        # env.render()
+    trainer = env.train([None, 'random']) # we might need to randomize the order
+    obs = trainer.reset()
 
+    STEPS = 10000
+    TARGET_UPDATE = 100
+    steps_in_episode = 0
+    for step in range(STEPS):
         if env.done:
+            print(f"Episode steps: {steps_in_episode}")
+            steps_in_episode = 0
             obs = trainer.reset()
+        steps_in_episode += 1
         old_obs = obs
-        action = player.make_move(obs)
+        action = agent.make_move(obs)
         obs, reward, done, info = trainer.step(action)
-        player.save(old_obs, action, reward, obs)
-        if done:
-            print(reward)
+        print(old_obs==obs)
+
+
+
+        reward = 0 if reward is None else reward
+        agent.save(old_obs.board, action, reward, obs.board)
+        agent.optimize()
+        if step % TARGET_UPDATE == 0:
+            agent.update_networks()
+
         #print(reward, done)
 
 train()

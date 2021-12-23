@@ -1,8 +1,8 @@
-from rl_player import Player
 from kaggle_environments.envs.connectx.connectx import is_win, play
 from random import choice
+from agent import Agent
 
-class BruteforceAgent(Player):
+class BruteforceAgent(Agent):
     def __init__(self, configuration, depth=4):
         super().__init__()
         self.max_depth = depth

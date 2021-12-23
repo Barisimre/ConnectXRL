@@ -1,6 +1,7 @@
-from rl_player import Player
+from agents.agent import Agent
 
-class HumanAgent(Player):
+
+class HumanAgent(Agent):
     def __init__(self, configuration):
         super().__init__()
         self.config = configuration
