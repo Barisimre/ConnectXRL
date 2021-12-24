@@ -9,7 +9,7 @@ class BruteforceAgent(Agent):
         self.config = configuration
         self.EMPTY = 0
 
-    def make_move(self, observation, _):
+    def make_move(self, observation, _=None):
         return self.negamax_agent(observation)
 
     def negamax_agent(self, obs):
