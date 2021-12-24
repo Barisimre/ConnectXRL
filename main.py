@@ -39,7 +39,7 @@ def train():
         old_obs = obs
         action = agent.make_move(obs)
         obs, reward, done, info = trainer.step(action)
-        print(old_obs==obs)
+        print(old_obs.board==obs.board)
 
 
 
