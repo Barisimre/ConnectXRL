@@ -7,8 +7,9 @@ class BruteforceAgent(Agent):
         super().__init__()
         self.max_depth = depth
         self.config = configuration
+        self.EMPTY = 0
 
-    def make_move(self, observation):
+    def make_move(self, observation, _):
         return self.negamax_agent(observation)
 
     def negamax_agent(self, obs):
@@ -67,7 +68,7 @@ class BruteforceAgent(Agent):
 
             return best_score, best_column
 
-        _, column = negamax(obs.board[:], obs.mark, self.max_depth)
+        _, column = negamax(obs['board'][:], obs['mark'], self.max_depth)
         if column is None:
-            column = choice([c for c in range(columns) if obs.board[c] == self.EMPTY])
+            column = choice([c for c in range(columns) if obs['board'][c] == self.EMPTY])
         return column
