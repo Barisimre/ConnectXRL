@@ -7,7 +7,6 @@ class BruteforceAgent(Agent):
         super().__init__()
         self.max_depth = depth
         self.config = configuration
-        self.EMPTY = 0
 
     def make_move(self, observation, _=None):
         return self.negamax_agent(observation)

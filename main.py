@@ -21,11 +21,12 @@ def train():
 
     # player = Player()
     # player = BruteforceAgent(configuration, depth=2)
-    agent = HumanAgent(configuration)
-    # agent = RLAgent(COLUMNS, ROWS)
+    # agent = HumanAgent(configuration)
+    agent = RLAgent(configuration)
 
     trainer = env.train([None, 'random']) # we might need to randomize the order
     obs = trainer.reset()
+    state = obs.board
 
     STEPS = 10000
     TARGET_UPDATE = 100
@@ -33,23 +34,28 @@ def train():
     for step in range(STEPS):
         if env.done:
             print(f"Episode steps: {steps_in_episode}")
+            print(f'Reward: {reward}')
+            # print(agent.renderer(obs.board))
             steps_in_episode = 0
             obs = trainer.reset()
+            state = obs.board
         steps_in_episode += 1
-        old_obs = obs
+        old_state = state
         action = agent.make_move(obs)
         obs, reward, done, info = trainer.step(action)
-        print(old_obs.board==obs.board)
-
-
-
-        reward = 0 if reward is None else reward
-        agent.save(old_obs.board, action, reward, obs.board)
+        state = obs.board
+        if state == old_state:
+            reward = -1  # punish the rl agent for illegal moves.
+            state = None
+        agent.save(old_state, action, reward, state)
         agent.optimize()
         if step % TARGET_UPDATE == 0:
             agent.update_networks()
+            print('updating network')
 
         #print(reward, done)
 
-train()
+
+if __name__ == '__main__':
+    train()
     
