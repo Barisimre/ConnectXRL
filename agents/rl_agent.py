@@ -30,7 +30,7 @@ class RLAgent(Agent):
         # self.device = torch.device("cpu")
         self.learnt = False
         self.moves_made = 0
-        self.exploration_start = 0.4
+        self.exploration_start = 0.9
         self.exploration_end = 0.05
         self.exploration_decay = 2000
 
