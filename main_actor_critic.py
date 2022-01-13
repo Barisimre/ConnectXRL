@@ -18,18 +18,22 @@ current_policy_win = 0
 current_policy_loss = 0
 
 def select_action_from_distribution(env, dist):
-    possible = env.action_space()
-    probs = np.array([])
-    indices = np.array([])
-    for prob, index in reversed(sorted((v, i) for i, v in enumerate(dist))):
-        if index in possible:
-            probs = np.append(probs, prob)
-            indices = np.append(indices, int(index))
+    return int(np.argmax(dist))
 
-    probs = softmax(probs)
-    if len(probs) == 0:
-        raise ValueError("no action was possible. Was the game finished already?")
-    return int(np.random.choice(indices, p=probs))
+    #
+    # possible = env.action_space()
+    # probs = np.array([])
+    # indices = np.array([])
+    # for prob, index in reversed(sorted((v, i) for i, v in enumerate(dist))):
+    #     if index in possible:
+    #         probs = np.append(probs, prob)
+    #         indices = np.append(indices, int(index))
+    #
+    # probs = softmax(probs)
+    # if len(probs) == 0:
+    #     raise ValueError("no action was possible. Was the game finished already?")
+    # return int(np.random.choice(indices, p=probs))
+
 
 
 # Runs policy for X episodes and returns average reward
@@ -45,7 +49,10 @@ def eval_policy(policy, env_name, seed, eval_episodes=10):
         while not done:
             action = policy.select_action(np.array(state))
             action = select_action_from_distribution(eval_env, action)
+
             state, reward, done, _ = eval_env.step(action)
+            if done and reward is None:
+                reward = -1
             avg_reward += reward
 
     avg_reward /= eval_episodes
@@ -104,7 +111,7 @@ if __name__ == "__main__":
     # Now variables in environment
     state_dim = env.observation_space_dim
     action_dim = env.action_space_dim
-    max_action = env.action_space_max
+    max_action = env.action_space_max_value
 
     kwargs = {
         "state_dim": state_dim,
@@ -152,6 +159,8 @@ if __name__ == "__main__":
 
         # Perform action
         next_state, reward, done, _ = env.step(action)
+        if done and reward is None:
+            reward = -1
         done_bool = float(done) if episode_timesteps < env.max_episode_steps else 0
 
         # Store data in replay buffer
