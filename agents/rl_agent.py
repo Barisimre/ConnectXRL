@@ -23,7 +23,7 @@ class RLAgent(Agent):
         self.training = True
         self.buffer = ReplayMemory(10000)
         self.training_threshold = 128
-        self.batch_size = 128
+        self.batch_size = 32
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.device = torch.device("cpu")
         self.learnt = False

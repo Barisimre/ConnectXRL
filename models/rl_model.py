@@ -34,7 +34,6 @@ class Model(nn.Module):
     # Forward pass of the model
     def forward(self, x):
         x = x.flatten(-2)
-        print(x.size())
 
         return self.net(x)
 
