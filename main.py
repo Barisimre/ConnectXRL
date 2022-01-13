@@ -8,6 +8,7 @@ from agents.bruteforce_agent import BruteforceAgent
 from settings.configuration import Configuration
 from itertools import count
 from time import sleep
+from tqdm import tqdm
 
 # Configs
 ROWS = 6
@@ -16,7 +17,7 @@ INAROW = 4
 TIMEOUT = 10
 
 configuration = Configuration(rows=ROWS, columns=COLUMNS, inarow=INAROW, actTimeout=TIMEOUT)
-env = make("connectx", configuration=configuration, debug=True)
+env = make("connectx", configuration=configuration)
 
 def mean_reward(rewards):
     return sum(r[0] if r[0] is not None else -1 for r in rewards) / len(rewards)
@@ -24,12 +25,15 @@ def mean_reward(rewards):
 def validate(agent, opponent):
     agent.eval()
     env.reset()
-    rewards = evaluate('connectx', agents=[agent.make_move, opponent], configuration=configuration, num_episodes=50)
+    print("Evaluate")
+    rewards = evaluate('connectx', agents=[agent.make_move, opponent], configuration=configuration, num_episodes=50, debug=True)
     # print(rewards)
-    losses = sum([1 if r[0] is None or r[0] < 0 else 0 for r in rewards])
+    # losses = len(r[0]<0 for r in rewards)
+    losses = sum([1 if r[0] is not None and r[0] < 0 else 0 for r in rewards])
     ties = sum([1 if r[0] is not None and r[0] == 0 else 0 for r in rewards])
+    illegals = sum([1 if r[0] is None else 0 for r in rewards])
     wins = sum([1 if r[0] is not None and r[0] > 0 else 0 for r in rewards])
-    print(f'amount of wins, ties, losses: {(wins, ties, losses)}')
+    print(f'amount of wins, ties, illegals, losses: {(wins, ties, illegals, losses)}')
     print(f'amount of ties: ')
     print(f'mean reward: {mean_reward(rewards)}')
 
@@ -51,6 +55,7 @@ def play_against(agent):
                 print()
                 print()
 
+
 def train(opponent):
     # Training agent in first position (player 1) against the default random agent.
 
@@ -62,7 +67,7 @@ def train(opponent):
     obs = trainer.reset()
     done = False
 
-    STEPS = 2000
+    STEPS = 10000
     TARGET_UPDATE = 100
     steps_in_episode = 0
     for step in range(STEPS):
@@ -81,7 +86,7 @@ def train(opponent):
         old_state = old_obs.board
         if state == old_state:
             print('illegal move')
-            reward = -1  # punish the rl agent for illegal moves.
+            reward = -3  # punish the rl agent for illegal moves.
             done = True  # just to make sure we reset
         if done:
             state = None
@@ -96,7 +101,7 @@ def train(opponent):
 
 
 if __name__ == '__main__':
-    opponent = BruteforceAgent(configuration, depth=1)
+    opponent = BruteforceAgent(configuration, depth=2)
     agent = train(opponent.make_move)
     validate(agent, opponent.make_move)
     # play_against(opponent)

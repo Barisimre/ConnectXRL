@@ -21,8 +21,8 @@ class RLAgent(Agent):
     def __init__(self, configuration) -> None:
         super().__init__(configuration)
         self.training = True
-        self.buffer = ReplayMemory(10000)
-        self.training_threshold = 128
+        self.buffer = ReplayMemory(500)
+        self.training_threshold = 400
         self.batch_size = 32
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.device = torch.device("cpu")
@@ -65,11 +65,13 @@ class RLAgent(Agent):
         return action
 
     def optimize(self):
+
         # We have enough in the buffer, update some parameters
         if len(self.buffer) < self.training_threshold:
             return
         self.learnt = True
         transitions = self.buffer.sample(self.batch_size)
+
         batch = Transition(*zip(*transitions))
         non_final_mask = \
             torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=self.device, dtype=torch.bool)

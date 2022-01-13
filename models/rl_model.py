@@ -23,12 +23,14 @@ class Model(nn.Module):
         self.net = Sequential(
             nn.Linear(layer_size, layer_size),
             nn.ReLU(),
-            nn.Linear(layer_size, layer_size),
+            nn.Linear(layer_size, layer_size*4),
             nn.ReLU(),
-            nn.Linear(layer_size, layer_size),
+            nn.Linear(layer_size*4, layer_size*2),
+            nn.ReLU(),
+            nn.Linear(layer_size*2, layer_size),
             nn.ReLU(),
             nn.Linear(layer_size, cols),
-            nn.Sigmoid()
+            # nn.Sigmoid()
         )
 
     # Forward pass of the model
