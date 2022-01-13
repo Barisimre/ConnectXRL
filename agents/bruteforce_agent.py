@@ -1,20 +1,19 @@
 from kaggle_environments.envs.connectx.connectx import is_win, play
 from random import choice
-from agent import Agent
+from agents.agent import Agent
 
 class BruteforceAgent(Agent):
     def __init__(self, configuration, depth=4):
-        super().__init__()
+        super().__init__(configuration)
         self.max_depth = depth
-        self.config = configuration
 
-    def make_move(self, observation, _=None):
+    def make_move(self, observation, configuration):
         return self.negamax_agent(observation)
 
     def negamax_agent(self, obs):
 
-        columns = self.config.columns
-        rows = self.config.rows
+        columns = self.configuration.columns
+        rows = self.configuration.rows
         size = rows * columns
 
         def negamax(board, mark, depth):
@@ -26,7 +25,7 @@ class BruteforceAgent(Agent):
 
             # Can win next.
             for column in range(columns):
-                if board[column] == self.EMPTY and is_win(board, column, mark, self.config, False):
+                if board[column] == self.EMPTY and is_win(board, column, mark, self.configuration, False):
                     return (size + 1 - moves) / 2, column
 
             # Recursively check all columns.
@@ -57,7 +56,7 @@ class BruteforceAgent(Agent):
                             score += 1
                     else:
                         next_board = board[:]
-                        play(next_board, column, mark, self.config)
+                        play(next_board, column, mark, self.configuration)
                         (score, _) = negamax(next_board,
                                              1 if mark == 2 else 2, depth - 1)
                         score = score * -1

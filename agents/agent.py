@@ -5,7 +5,7 @@ class Agent:
         self.EMPTY = 0
         pass
 
-    def make_move(self, observation):
+    def make_move(self, observation, configuration):
         pass
 
     def save(self, *args):
@@ -30,3 +30,9 @@ class Agent:
             out = out + \
                   print_row(board[r * columns: r * columns + columns]) + row_bar
         print(out)
+
+    def eval(self): # put agent into eval mode
+        pass
+
+    def train(self): # put agent into train mode
+        pass
