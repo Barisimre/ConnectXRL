@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import torch
 import argparse
@@ -11,7 +13,7 @@ from agents.bruteforce_agent import BruteforceAgent
 from scipy.special import softmax
 
 configuration = Configuration(rows=6, columns=7, inarow=4, actTimeout=10)
-agent = BruteforceAgent(configuration=configuration, depth=1)
+agent = BruteforceAgent(configuration=configuration, depth=2)
 configuration.training_agent = agent.make_move
 
 current_policy_win = 0
@@ -75,7 +77,7 @@ if __name__ == "__main__":
     parser.add_argument("--policy", default="TD3")  # Policy name (TD3, DDPG or OurDDPG)
     parser.add_argument("--env", default="HalfCheetah-v2")  # OpenAI gym environment name
     parser.add_argument("--seed", default=0, type=int)  # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--start_timesteps", default=25e3, type=int)  # Time steps initial random policy is used
+    parser.add_argument("--start_timesteps", default=25e2, type=int)  # Time steps initial random policy is used
     parser.add_argument("--eval_freq", default=5e3, type=int)  # How often (time steps) we evaluate
     parser.add_argument("--max_timesteps", default=1e6, type=int)  # Max time steps to run environment
     parser.add_argument("--expl_noise", default=0.1)  # Std of Gaussian exploration noise
@@ -151,20 +153,32 @@ if __name__ == "__main__":
         if t < args.start_timesteps:
             action = env.action_space_sample()
         else:
-            action = (
-                    policy.select_action(np.array(state))
-                    + np.random.normal(0, max_action * args.expl_noise, size=action_dim)
-            ).clip(0, max_action) #.clip(-max_action, max_action)
+            action = policy.select_action(np.array(state))
+            # print(f'action before noise {action}')
+            action += np.random.normal(0, max_action * args.expl_noise, size=action_dim)
+            # print(action)
+            action = action.clip(0, max_action) #.clip(-max_action, max_action)
             action = select_action_from_distribution(env, action)
 
         # Perform action
         next_state, reward, done, _ = env.step(action)
-        if done and reward is None:
-            reward = -1
+        # if done and reward is None:
+        #     reward = -1
+        # if reward is None:
+        #     assert next_state == state
+        #     print('yes')
+        # if next_state == state:
+        #     assert done
         if done:
-            next_state = None
+            # next_state = None
             if reward is None:
+                next_state = copy.deepcopy(next_state)
+                for i in range(len(next_state)):
+                    next_state[i] = -1
                 reward = -1
+        if t > args.start_timesteps:
+            if reward == -1:
+                print(next_state)
         # print(env.max_episode_steps)
         # done_bool = float(done) if episode_timesteps < env.max_episode_steps else 0
         done_bool = float(done)
