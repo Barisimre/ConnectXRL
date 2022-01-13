@@ -60,7 +60,7 @@ def eval_policy(policy, env_name, seed, eval_episodes=10):
     print("---------------------------------------")
     print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
     if current_policy_loss + current_policy_win > 0:
-        print(f"Won {current_policy_win} and lost {current_policy_loss} => {(current_policy_win / (current_policy_loss + current_policy_win))}% winrate")
+        print(f"Won {current_policy_win} and lost {current_policy_loss} => {100 * (current_policy_win / (current_policy_loss + current_policy_win))}% winrate")
     print("---------------------------------------")
 
     current_policy_loss = 0
@@ -161,8 +161,13 @@ if __name__ == "__main__":
         next_state, reward, done, _ = env.step(action)
         if done and reward is None:
             reward = -1
-        done_bool = float(done) if episode_timesteps < env.max_episode_steps else 0
-
+        if done:
+            next_state = None
+            if reward is None:
+                reward = -1
+        # print(env.max_episode_steps)
+        # done_bool = float(done) if episode_timesteps < env.max_episode_steps else 0
+        done_bool = float(done)
         # Store data in replay buffer
         replay_buffer.add(state, action, next_state, reward, done_bool)
 
