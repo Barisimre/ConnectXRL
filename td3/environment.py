@@ -21,9 +21,9 @@ class Environment:
             print("using default observation")
             self.obs = {'board': [0]*(self.config.rows*self.config.columns)}
 
-        self.action_space_max = self.action_space_max()
-        self.observation_space_dim = self.observation_space_shape()
-        self.action_space_dim = self.action_space_shape()
+        self.action_space_max_value = self.config.columns - 1
+        self.observation_space_dim = self.config.columns * self.config.rows
+        self.action_space_dim = self.config.columns
 
     def reset(self):
         # print(self.board_to_string())
@@ -64,16 +64,16 @@ class Environment:
     #     action_dim = env.action_space.shape[0]
     def action_space_shape(self):
         """nr of valid actions at this time"""
-        return len(self.action_space())
+        return self.action_space_dim
 
     #  state_dim = env.observation_space.shape[0]
     def observation_space_shape(self):
         """nr of observations """
-        return len(self.obs['board'])
+        return self.observation_space_dim
 
     def action_space_max(self):
         """The maximum valid action"""
-        return self.action_space()[-1]
+        return self.action_space_max_value
 
     def board_to_string(self):
         board2d = [self.obs['board'][i*self.config.columns:(i+1)*self.config.columns] for i in range(self.config.columns)]
