@@ -49,7 +49,7 @@ def select_action_from_distribution(env, dist):
 # Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment
 def eval_policy(policy, env_name, seed, step=None, eval_episodes=10):
-    global current_policy_won, current_policy_lost, current_policy_tied, configuration
+    global current_policy_won, current_policy_lost, current_policy_tied, configuration, depth
     eval_env = Environment(configuration=configuration)
     eval_env.seed(seed + 100)
 
@@ -72,10 +72,11 @@ def eval_policy(policy, env_name, seed, step=None, eval_episodes=10):
     print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
     if current_policy_lost + current_policy_tied + current_policy_won > 0:
         print(f"Won {current_policy_won}, tied {current_policy_tied} and lost {current_policy_lost} => {100 * (current_policy_won / (current_policy_lost + current_policy_tied + current_policy_won))}% winrate")
+        print(f"Depth {depth}")
         print("---------------------------------------")
         if current_policy_won / (current_policy_lost + current_policy_tied + current_policy_won) >= 0.7:
             # level up
-            global depth, agent, env
+            global agent, env
             depth += 1
             print(f'--------------\n\nupgrading to a bruteforce of depth: {depth}\n\n--------------')
             agent = BruteforceAgent(configuration=configuration, depth=depth)
