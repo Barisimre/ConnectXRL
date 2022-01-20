@@ -117,6 +117,7 @@ class TD3(object):
             # next_action = (
             #         self.actor_target(next_state) + noise
             # ).clamp(-self.max_action, self.max_action)
+            # todo: add noise to the next_actions
             next_action = self.actor_target(next_state)
             # Compute the target Q value
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)
@@ -129,7 +130,6 @@ class TD3(object):
 
         # Get current Q estimates
         current_Q1, current_Q2 = self.critic(state, action)
-        target_vs_current = list(zip(target_Q, current_Q1, current_Q2))
         # for tvc in target_vs_current:
         #     print(f'target and current: {tvc}')
 
@@ -144,7 +144,7 @@ class TD3(object):
         # Delayed policy updates
         if self.total_it % self.policy_freq == 0:
 
-            # Compute actor losse
+            # Compute actor loss
             actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
 
             # Optimize the actor

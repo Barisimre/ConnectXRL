@@ -26,7 +26,7 @@ class Model(nn.Module):
             nn.Linear(512, 512),
             nn.ReLU(),
             nn.Linear(512, cols),
-            nn.Sigmoid()
+            # nn.Tanh(),
         )
 
     # Forward pass of the model
