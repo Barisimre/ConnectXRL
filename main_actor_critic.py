@@ -12,15 +12,23 @@ from settings.configuration import Configuration
 from agents.bruteforce_agent import BruteforceAgent
 from scipy.special import softmax
 
+depth = 2
 configuration = Configuration(rows=6, columns=7, inarow=4, actTimeout=10)
-agent = BruteforceAgent(configuration=configuration, depth=2)
+agent = BruteforceAgent(configuration=configuration, depth=depth)
 configuration.training_agent = agent.make_move
 
-current_policy_win = 0
-current_policy_loss = 0
+env = Environment(configuration=configuration)
+replay_buffer = None
+
+current_policy_won = 0
+current_policy_lost = 0
+current_policy_tied = 0
 
 def select_action_from_distribution(env, dist):
+    # dist /= sum(dist)
+    # return int(np.random.choice(len(dist), p=dist))
     return int(np.argmax(dist))
+    # return int(np.argmax(dist))
 
     #
     # possible = env.action_space()
@@ -40,8 +48,8 @@ def select_action_from_distribution(env, dist):
 
 # Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment
-def eval_policy(policy, env_name, seed, eval_episodes=10):
-    global current_policy_win, current_policy_loss
+def eval_policy(policy, env_name, seed, step=None, eval_episodes=10):
+    global current_policy_won, current_policy_lost, current_policy_tied, configuration
     eval_env = Environment(configuration=configuration)
     eval_env.seed(seed + 100)
 
@@ -50,9 +58,8 @@ def eval_policy(policy, env_name, seed, eval_episodes=10):
         state, done = eval_env.reset(), False
         while not done:
             action = policy.select_action(np.array(state))
-            action = select_action_from_distribution(eval_env, action)
 
-            state, reward, done, _ = eval_env.step(action)
+            state, reward, done, _ = eval_env.step(select_action_from_distribution(eval_env, action))
             if done and reward is None:
                 reward = -1
             avg_reward += reward
@@ -60,15 +67,29 @@ def eval_policy(policy, env_name, seed, eval_episodes=10):
     avg_reward /= eval_episodes
 
     print("---------------------------------------")
+    if step is not None:
+        print(f'Step {step}')
     print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
-    if current_policy_loss + current_policy_win > 0:
-        print(f"Won {current_policy_win} and lost {current_policy_loss} => {100 * (current_policy_win / (current_policy_loss + current_policy_win))}% winrate")
-    print("---------------------------------------")
+    if current_policy_lost + current_policy_tied + current_policy_won > 0:
+        print(f"Won {current_policy_won}, tied {current_policy_tied} and lost {current_policy_lost} => {100 * (current_policy_won / (current_policy_lost + current_policy_tied + current_policy_won))}% winrate")
+        print("---------------------------------------")
+        if current_policy_won / (current_policy_lost + current_policy_tied + current_policy_won) >= 0.7:
+            # level up
+            global depth, agent, env
+            depth += 1
+            print(f'--------------\n\nupgrading to a bruteforce of depth: {depth}\n\n--------------')
+            agent = BruteforceAgent(configuration=configuration, depth=depth)
+            configuration.training_agent = agent.make_move
+            env = Environment(configuration=configuration)
+            replay_buffer.reset()
+    won = current_policy_won
+    tied = current_policy_tied
+    lost = current_policy_lost
+    current_policy_won = 0
+    current_policy_lost = 0
+    current_policy_tied = 0
 
-    current_policy_loss = 0
-    current_policy_win = 0
-
-    return avg_reward
+    return avg_reward, won, tied, lost
 
 
 if __name__ == "__main__":
@@ -102,7 +123,6 @@ if __name__ == "__main__":
     if args.save_model and not os.path.exists("./models"):
         os.makedirs("./models")
 
-    env = Environment(configuration=configuration)
 
     # Set seeds
     env.seed(args.seed)
@@ -134,7 +154,6 @@ if __name__ == "__main__":
     if args.load_model != "":
         policy_file = file_name if args.load_model == "default" else args.load_model
         policy.load(f"./models/{policy_file}")
-
     replay_buffer = utils.ReplayBuffer(state_dim, action_dim)
 
     # Evaluate untrained policy
@@ -150,18 +169,20 @@ if __name__ == "__main__":
         episode_timesteps += 1
 
         # Select action randomly or according to policy
-        if t < args.start_timesteps:
-            action = env.action_space_sample()
+        if len(replay_buffer) < args.start_timesteps:
+            sample =  env.action_space_sample()
+            action = [1 if sample == i else 0 for i in range(env.action_space_dim)]
         else:
             action = policy.select_action(np.array(state))
+        # print(f'action: {select_action_from_distribution(env, action)}')
             # print(f'action before noise {action}')
-            action += np.random.normal(0, max_action * args.expl_noise, size=action_dim)
+            # action += np.random.normal(0, max_action * args.expl_noise, size=action_dim)
             # print(action)
-            action = action.clip(0, max_action) #.clip(-max_action, max_action)
-            action = select_action_from_distribution(env, action)
+            # action = action.clip(0, max_action) #.clip(-max_action, max_action)
+            # action = select_action_from_distribution(env, action)
 
         # Perform action
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, done, _ = env.step(select_action_from_distribution(env, action))
         # if done and reward is None:
         #     reward = -1
         # if reward is None:
@@ -176,11 +197,8 @@ if __name__ == "__main__":
                 for i in range(len(next_state)):
                     next_state[i] = -1
                 reward = -1
-        if t > args.start_timesteps:
-            if reward == -1:
-                print(next_state)
         # print(env.max_episode_steps)
-        # done_bool = float(done) if episode_timesteps < env.max_episode_steps else 0
+        # not_done_bool = float(not done) if episode_timesteps > env.max_episode_steps else 0
         done_bool = float(done)
         # Store data in replay buffer
         replay_buffer.add(state, action, next_state, reward, done_bool)
@@ -189,7 +207,7 @@ if __name__ == "__main__":
         episode_reward += reward
 
         # Train agent after collecting sufficient data
-        if t >= args.start_timesteps:
+        if len(replay_buffer) >= args.start_timesteps:
             policy.train(replay_buffer, args.batch_size)
 
         if done:
@@ -197,12 +215,15 @@ if __name__ == "__main__":
             # print(
             #    f"Total T: {t + 1} Episode Num: {episode_num + 1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
             if episode_reward > 0:
-                current_policy_win += 1
+                current_policy_won += 1
+                # print('wow a win', episode_reward)
             elif episode_reward < 0:
-                current_policy_loss += 1
+                current_policy_lost += 1
+                # print('wow a loss', episode_reward)
             else:
-                # pass
-                print("wow a tie", episode_reward)
+                current_policy_tied += 1
+                pass
+                # print("wow a tie", episode_reward)
 
             # Reset environment
             state, done = env.reset(), False
@@ -212,6 +233,6 @@ if __name__ == "__main__":
 
         # Evaluate episode
         if (t + 1) % args.eval_freq == 0:
-            evaluations.append(eval_policy(policy, args.env, args.seed))
+            evaluations.append(eval_policy(policy, args.env, args.seed, step=t))
             np.save(f"./results/{file_name}", evaluations)
             if args.save_model: policy.save(f"./models/{file_name}")
