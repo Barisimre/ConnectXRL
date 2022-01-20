@@ -24,7 +24,10 @@ class Actor(nn.Module):
     def forward(self, state):
         a = F.relu(self.l1(state))
         a = F.relu(self.l2(a))
-        return self.max_action * torch.tanh(self.l3(a))
+        # return torch.tanh(self.l3(a))
+        a = nn.functional.gumbel_softmax(self.l3(a), hard=True)  # should provide a differentiable one-hot encoding
+        # print(a)
+        return a
 
 
 class Critic(nn.Module):
@@ -68,20 +71,21 @@ class TD3(object):
             state_dim,
             action_dim,
             max_action,
-            discount=0.99,
+            discount=0.9,
             tau=0.005,
             policy_noise=0.2,
             noise_clip=0.5,
-            policy_freq=2
+            policy_freq=2,
+            lr=3e-4,
     ):
 
         self.actor = Actor(state_dim, action_dim, max_action).to(device)
         self.actor_target = copy.deepcopy(self.actor)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=lr)
 
         self.critic = Critic(state_dim, action_dim).to(device)
         self.critic_target = copy.deepcopy(self.critic)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=lr)
 
         self.max_action = max_action
         self.discount = discount
@@ -93,8 +97,10 @@ class TD3(object):
         self.total_it = 0
 
     def select_action(self, state):
-        state = torch.FloatTensor(state.reshape(1, -1)).to(device)
-        return self.actor(state).cpu().data.numpy().flatten()
+        state = torch.FloatTensor(state.reshape(1, -1))
+        state = state.to(device)
+        output = self.actor(state)
+        return output.flatten().cpu().data
 
     def train(self, replay_buffer, batch_size=256):
         self.total_it += 1
@@ -104,21 +110,28 @@ class TD3(object):
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise
-            noise = (
-                    torch.randn_like(action) * self.policy_noise
-            ).clamp(-self.noise_clip, self.noise_clip)
-
-            next_action = (
-                    self.actor_target(next_state) + noise
-            ).clamp(-self.max_action, self.max_action)
-
+            # noise = (
+            #         torch.randn_like(action) * self.policy_noise
+            # ).clamp(-self.noise_clip, self.noise_clip)
+            #
+            # next_action = (
+            #         self.actor_target(next_state) + noise
+            # ).clamp(-self.max_action, self.max_action)
+            next_action = self.actor_target(next_state)
             # Compute the target Q value
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)
+            # targets = list(zip(target_Q1.cpu().data.numpy(), target_Q2.cpu().data.numpy(), not_done, reward))
+            # for target in targets:
+            #     print(f'target: {target}')
             target_Q = torch.min(target_Q1, target_Q2)
             target_Q = reward + not_done * self.discount * target_Q
+            # print(f'target: {target_Q.cpu().data.numpy()}')
 
         # Get current Q estimates
         current_Q1, current_Q2 = self.critic(state, action)
+        target_vs_current = list(zip(target_Q, current_Q1, current_Q2))
+        # for tvc in target_vs_current:
+        #     print(f'target and current: {tvc}')
 
         # Compute critic loss
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
