@@ -61,7 +61,7 @@ class RLAgent(Agent):
                 value = net_output[0].item()
                 action = net_output[1].item()
         self.moves_made += 1
-        print(f'action: {action}, value: {value}, moves: {self.moves_made}')
+        # print(f'action: {action}, value: {value}, moves: {self.moves_made}')
         return action
 
     def optimize(self):
@@ -91,7 +91,7 @@ class RLAgent(Agent):
         criterion = nn.SmoothL1Loss()
 
         loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-        print(f"loss:         {loss}")
+        # print(f"loss:         {loss}")
         self.optimizer.zero_grad()
         loss.backward()
         for param in self.policy_net.parameters():

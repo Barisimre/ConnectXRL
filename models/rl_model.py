@@ -21,16 +21,12 @@ class Model(nn.Module):
         layer_size = cols*rows
 
         self.net = Sequential(
-            nn.Linear(layer_size, layer_size),
+            nn.Linear(layer_size, 512),
             nn.ReLU(),
-            nn.Linear(layer_size, layer_size*4),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(layer_size*4, layer_size*2),
-            nn.ReLU(),
-            nn.Linear(layer_size*2, layer_size),
-            nn.ReLU(),
-            nn.Linear(layer_size, cols),
-            # nn.Sigmoid()
+            nn.Linear(512, cols),
+            nn.Sigmoid()
         )
 
     # Forward pass of the model

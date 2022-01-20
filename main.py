@@ -26,7 +26,7 @@ def validate(agent, opponent):
     agent.eval()
     env.reset()
     print("Evaluate")
-    rewards = evaluate('connectx', agents=[agent.make_move, opponent], configuration=configuration, num_episodes=50, debug=True)
+    rewards = evaluate('connectx', agents=[agent.make_move, opponent.make_move], configuration=configuration, num_episodes=50, debug=False)
     # print(rewards)
     # losses = len(r[0]<0 for r in rewards)
     losses = sum([1 if r[0] is not None and r[0] < 0 else 0 for r in rewards])
@@ -34,7 +34,6 @@ def validate(agent, opponent):
     illegals = sum([1 if r[0] is None else 0 for r in rewards])
     wins = sum([1 if r[0] is not None and r[0] > 0 else 0 for r in rewards])
     print(f'amount of wins, ties, illegals, losses: {(wins, ties, illegals, losses)}')
-    print(f'amount of ties: ')
     print(f'mean reward: {mean_reward(rewards)}')
 
 
@@ -67,34 +66,38 @@ def train(opponent):
     obs = trainer.reset()
     done = False
 
-    STEPS = 10000
+    STEPS = 3000
     TARGET_UPDATE = 100
     steps_in_episode = 0
-    for step in range(STEPS):
-        if done:
-            print(f"Episode steps: {steps_in_episode}")
-            print(f'Reward: {reward}')
-            # print(agent.renderer(obs.board))
-            steps_in_episode = 0
-            obs = trainer.reset()
-        steps_in_episode += 1
-        old_obs = obs
-        action = agent.make_move(obs, configuration)
-        obs, reward, done, info = trainer.step(action)
-        # print(reward)
-        state = obs.board
-        old_state = old_obs.board
-        if state == old_state:
-            print('illegal move')
-            reward = -3  # punish the rl agent for illegal moves.
-            done = True  # just to make sure we reset
-        if done:
-            state = None
-        agent.save(old_state, action, reward, state)
-        agent.optimize()
-        if step % TARGET_UPDATE == 0:
-            agent.update_networks()
-            print('updating network')
+    step = 0
+    while True:
+        for step in tqdm(range(STEPS)):
+            if done:
+                # print(f"Episode steps: {steps_in_episode}")
+                # print(f'Reward: {reward}')
+                # print(agent.renderer(obs.board))
+                steps_in_episode = 0
+                obs = trainer.reset()
+            steps_in_episode += 1
+            old_obs = obs
+            action = agent.make_move(obs, configuration)
+            obs, reward, done, info = trainer.step(action)
+            state = obs.board
+            old_state = old_obs.board
+            if reward is None:
+                # print('illegal move')
+                reward = -3  # punish the rl agent for illegal moves.
+                done = True  # just to make sure we reset
+            if done:
+                state = None
+            agent.save(old_state, action, reward, state)
+            agent.optimize()
+            if step % TARGET_UPDATE == 0:
+                agent.update_networks()
+                # print('updating network')
+        validate(agent, BruteforceAgent(configuration, depth=2))
+
+
     return agent
 
         # print(reward, done)
