@@ -17,7 +17,7 @@ INAROW = 4
 TIMEOUT = 10
 
 configuration = Configuration(rows=ROWS, columns=COLUMNS, inarow=INAROW, actTimeout=TIMEOUT)
-env = make("connectx", configuration=configuration)
+env = make("connectx", configuration=configuration, debug=False)
 
 def mean_reward(rewards):
     return sum(r[0] if r[0] is not None else -1 for r in rewards) / len(rewards)

@@ -6,7 +6,7 @@ class Environment:
     def __init__(self, configuration, player_nr=0):
         self.config = configuration
         self.training_agent = configuration.training_agent
-        self.env = make("connectx", configuration=configuration, debug=True)
+        self.env = make("connectx", configuration=configuration, debug=False)
         self.trainer = self.env.train([None, self.training_agent, None][player_nr:player_nr+2])
 
         # Initial values

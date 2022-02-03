@@ -11,6 +11,7 @@ from td3.environment import Environment
 from settings.configuration import Configuration
 from agents.bruteforce_agent import BruteforceAgent
 from scipy.special import softmax
+import time
 
 depth = 2
 configuration = Configuration(rows=6, columns=7, inarow=4, actTimeout=10)
@@ -48,15 +49,18 @@ def select_action_from_distribution(env, dist):
 
 # Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment
-def eval_policy(policy, env_name, seed, step=None, eval_episodes=10):
+def eval_policy(policy, env_name, seed, step=None, eval_episodes=10, treshold=0.7):
+    start = time.time()
     global current_policy_won, current_policy_lost, current_policy_tied, configuration
     eval_env = Environment(configuration=configuration)
     eval_env.seed(seed + 100)
 
     avg_reward = 0.
+    total_steps = 0
     for _ in range(eval_episodes):
         state, done = eval_env.reset(), False
         while not done:
+            total_steps += 1
             action = policy.select_action(np.array(state))
 
             state, reward, done, _ = eval_env.step(select_action_from_distribution(eval_env, action))
@@ -65,15 +69,15 @@ def eval_policy(policy, env_name, seed, step=None, eval_episodes=10):
             avg_reward += reward
 
     avg_reward /= eval_episodes
+    end = time.time()
 
     print("---------------------------------------")
     if step is not None:
         print(f'Step {step}')
     print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
     if current_policy_lost + current_policy_tied + current_policy_won > 0:
-        print(f"Won {current_policy_won}, tied {current_policy_tied} and lost {current_policy_lost} => {100 * (current_policy_won / (current_policy_lost + current_policy_tied + current_policy_won))}% winrate")
-        print("---------------------------------------")
-        if current_policy_won / (current_policy_lost + current_policy_tied + current_policy_won) >= 0.7:
+        print(f"Won {current_policy_won}, tied {current_policy_tied} and lost {current_policy_lost} => {round(100 * (current_policy_won / (current_policy_lost + current_policy_tied + current_policy_won)), 3)}% winrate")
+        if current_policy_won / (current_policy_lost + current_policy_tied + current_policy_won) >= treshold:
             # level up
             global depth, agent, env
             depth += 1
@@ -89,7 +93,7 @@ def eval_policy(policy, env_name, seed, step=None, eval_episodes=10):
     current_policy_lost = 0
     current_policy_tied = 0
 
-    return avg_reward, won, tied, lost
+    return (avg_reward, won, tied, lost, end-start, total_steps)
 
 
 if __name__ == "__main__":
@@ -99,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument("--env", default="HalfCheetah-v2")  # OpenAI gym environment name
     parser.add_argument("--seed", default=0, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--start_timesteps", default=25e2, type=int)  # Time steps initial random policy is used
-    parser.add_argument("--eval_freq", default=5e3, type=int)  # How often (time steps) we evaluate
+    parser.add_argument("--eval_freq", default=1000, type=int)  # How often (time steps) we evaluate
     parser.add_argument("--max_timesteps", default=1e6, type=int)  # Max time steps to run environment
     parser.add_argument("--expl_noise", default=0.1)  # Std of Gaussian exploration noise
     parser.add_argument("--batch_size", default=256, type=int)  # Batch size for both actor and critic
@@ -112,9 +116,12 @@ if __name__ == "__main__":
     parser.add_argument("--load_model", default="")  # Model load file name, "" doesn't load, "default" uses file_name
     args = parser.parse_args()
 
+    depth_treshold = 0.9
+
+
     file_name = f"{args.policy}_{args.env}_{args.seed}"
     print("---------------------------------------")
-    print(f"Policy: {args.policy}, Env: {args.env}, Seed: {args.seed}")
+    print(f"Running with {depth_treshold}")
     print("---------------------------------------")
 
     if not os.path.exists("./results"):
@@ -164,7 +171,13 @@ if __name__ == "__main__":
     episode_timesteps = 0
     episode_num = 0
 
+    folder_name = f'TD3/{int(time.time())}_{depth_treshold}'
+    os.mkdir(f"results/{folder_name}")
+    os.mkdir(f"models/{folder_name}")
+    invalid_moves = 0
     for t in range(int(args.max_timesteps)):
+
+        
 
         episode_timesteps += 1
 
@@ -197,6 +210,7 @@ if __name__ == "__main__":
                 for i in range(len(next_state)):
                     next_state[i] = -1
                 reward = -1
+                invalid_moves += 1
         # print(env.max_episode_steps)
         # not_done_bool = float(not done) if episode_timesteps > env.max_episode_steps else 0
         done_bool = float(done)
@@ -233,7 +247,9 @@ if __name__ == "__main__":
 
         # Evaluate episode
         if (t + 1) % args.eval_freq == 0:
-            evaluations.append(eval_policy(policy, args.env, args.seed, step=t))
-            file_name = f'actor-critic_{configuration.rows}x{configuration.columns}:{configuration.inarow}_d{depth}'
-            np.save(f"./results/{file_name}", evaluations)
-            if args.save_model: policy.save(f"./models/{file_name}")
+            evaluations.append((*eval_policy(policy, args.env, args.seed, step=t, treshold=depth_treshold), invalid_moves, depth))
+            print(f"Depth: {depth}")
+            print(f"Total amount of invalid moves: {invalid_moves}")
+            invalid_moves = 0
+            np.save(f"results/{folder_name}/evals", evaluations, allow_pickle=True)
+            policy.save(f"models/{folder_name}/")
